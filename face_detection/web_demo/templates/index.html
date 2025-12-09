@@ -129,26 +129,24 @@
 </head>
 <body>
     <div class="header">
-        <h1>🎯 Face Detection in Group Photos</h1>
-        <p>So sánh 3 phương pháp: HOG(Sliding) | HOG+SVM (Optimized) | Raw Pixels+SVM</p>
+        <h1>Face Detection in Group Photos</h1>
+        <p>So sanh 3 phuong phap: HOG(Sliding) | HOG+SVM (Optimized) | Raw Pixels+SVM</p>
     </div>
 
     <div class="controls">
-        <button class="btn btn-start" id="startBtn" onclick="startCamera()">▶ Bắt đầu</button>
-        <button class="btn btn-stop" id="stopBtn" onclick="stopCamera()" disabled>⏹ Dừng</button>
+        <button class="btn btn-start" id="startBtn" onclick="startCamera()">Start</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopCamera()" disabled>Stop</button>
     </div>
 
     <div class="container">
-        <!-- Panel 1: HOG+SVM Sliding -->
         <div class="panel">
             <div class="panel-header">
-                <span>📊</span>
-                <h3>HOG(Sliding)</h3>
+                <h3>HOG (Sliding)</h3>
                 <span class="badge badge-hog">SLIDING</span>
             </div>
             <div class="video-container">
-                <img id="video1" src="" alt="HOG+SVM Sliding">
-                <div class="placeholder" id="placeholder1">Nhấn "Bắt đầu"</div>
+                <img id="video1" src="" alt="HOG Sliding">
+                <div class="placeholder" id="placeholder1">Click Start</div>
             </div>
             <div class="stats">
                 <div class="stat-item">
@@ -161,20 +159,18 @@
                 </div>
             </div>
             <div class="description">
-                <strong>HOG+ Sliding Window:</strong> Quét toàn bộ ảnh với sliding window, trích xuất HOG features và phân loại bằng SVM.
+                <strong>HOG Sliding Window:</strong> Scan image with sliding window, extract HOG features.
             </div>
         </div>
 
-        <!-- Panel 2: HOG + SVM Optimized -->
         <div class="panel">
             <div class="panel-header">
-                <span>⭐</span>
                 <h3>HOG+SVM (Optimized)</h3>
                 <span class="badge badge-hogsvm">BEST</span>
             </div>
             <div class="video-container">
                 <img id="video2" src="" alt="HOG + SVM">
-                <div class="placeholder" id="placeholder2">Nhấn "Bắt đầu"</div>
+                <div class="placeholder" id="placeholder2">Click Start</div>
             </div>
             <div class="stats">
                 <div class="stat-item">
@@ -187,20 +183,18 @@
                 </div>
             </div>
             <div class="description">
-                <strong>HOG+SVM Optimized:</strong> Phiên bản tối ưu với region proposal, nhanh hơn sliding window.
+                <strong>HOG+SVM Optimized:</strong> Optimized version with region proposal.
             </div>
         </div>
 
-        <!-- Panel 3: Raw Pixels + SVM -->
         <div class="panel">
             <div class="panel-header">
-                <span>🔍</span>
                 <h3>Raw Pixels + SVM</h3>
                 <span class="badge badge-raw">BASELINE</span>
             </div>
             <div class="video-container">
                 <img id="video3" src="" alt="Raw Pixels + SVM">
-                <div class="placeholder" id="placeholder3">Nhấn "Bắt đầu"</div>
+                <div class="placeholder" id="placeholder3">Click Start</div>
             </div>
             <div class="stats">
                 <div class="stat-item">
@@ -213,13 +207,13 @@
                 </div>
             </div>
             <div class="description">
-                <strong>Raw Pixels + SVM:</strong> Dùng raw pixels làm features. Baseline để so sánh (kết quả kém hơn HOG).
+                <strong>Raw Pixels + SVM:</strong> Use raw pixels as features. Baseline for comparison.
             </div>
         </div>
     </div>
 
     <div class="footer">
-        <p>Face Detection in Group Photos using HOG + SVM | Python + Flask + OpenCV</p>
+        <p>Face Detection using HOG + SVM</p>
     </div>
 
     <script>
@@ -231,19 +225,15 @@
                 .then(res => res.json())
                 .then(data => {
                     isRunning = true;
-                    
                     document.getElementById('video1').src = '/video_feed/hogsliding';
                     document.getElementById('video2').src = '/video_feed/hogsvm';
                     document.getElementById('video3').src = '/video_feed/rawsvm';
-                    
                     ['1', '2', '3'].forEach(i => {
                         document.getElementById('placeholder' + i).style.display = 'none';
                         document.getElementById('video' + i).style.display = 'block';
                     });
-                    
                     document.getElementById('startBtn').disabled = true;
                     document.getElementById('stopBtn').disabled = false;
-                    
                     statsInterval = setInterval(updateStats, 500);
                 });
         }
@@ -253,16 +243,13 @@
                 .then(res => res.json())
                 .then(data => {
                     isRunning = false;
-                    
                     ['1', '2', '3'].forEach(i => {
                         document.getElementById('video' + i).src = '';
                         document.getElementById('placeholder' + i).style.display = 'flex';
                         document.getElementById('video' + i).style.display = 'none';
                     });
-                    
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('stopBtn').disabled = true;
-                    
                     if (statsInterval) {
                         clearInterval(statsInterval);
                         statsInterval = null;
