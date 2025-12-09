@@ -1,0 +1,9 @@
+opencv-python>=4.8.0
+numpy>=1.24.0
+scikit-learn>=1.3.0    # SVM classifier
+joblib>=1.3.0          # Save/load models
+flask>=2.3.0           # Web demo
+flask-cors>=4.0.0      # CORS for web
+kagglehub              # Download LFW dataset từ Kaggle
+
+# Note: HOG tự implement, không cần scikit-image
