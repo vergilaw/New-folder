@@ -15,7 +15,7 @@ class FaceDetector:
         self.pca_components = pca_components
         self.pca = None
 
-    def train(self, positive_samples, negative_samples, test_size=0.2):
+    def train(self, positive_samples, negative_samples, test_size=0.2, return_details=False):
         from sklearn.model_selection import train_test_split
         X, y = [], []
         for img in positive_samples:
@@ -27,18 +27,35 @@ class FaceDetector:
         X = np.array(X)
         y = np.array(y)
         
+        original_dim = X.shape[1]
+        pca_variance = None
+        
         # Apply PCA if specified
         if self.pca_components:
             print(f"Applying PCA: {X.shape[1]} -> {self.pca_components} dimensions")
             self.pca = PCA(n_components=self.pca_components)
             X = self.pca.fit_transform(X)
-            print(f"Explained variance ratio: {sum(self.pca.explained_variance_ratio_)*100:.2f}%")
+            pca_variance = self.pca.explained_variance_ratio_
+            print(f"Explained variance ratio: {sum(pca_variance)*100:.2f}%")
         
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42, stratify=y)
         self.svm.fit(X_train, y_train)
         accuracy, report = self.svm.evaluate(X_test, y_test)
         print(f"Accuracy: {accuracy*100:.2f}%")
         self.is_trained = True
+        
+        if return_details:
+            y_pred = self.svm.svm.predict(self.svm.scaler.transform(X_test))
+            y_prob = self.svm.svm.predict_proba(self.svm.scaler.transform(X_test))[:, 1]
+            return {
+                'accuracy': accuracy,
+                'y_test': y_test,
+                'y_pred': y_pred,
+                'y_prob': y_prob,
+                'pca_variance': pca_variance,
+                'original_dim': original_dim,
+                'reduced_dim': self.pca_components if self.pca_components else original_dim
+            }
         return accuracy
 
     def detect(self, image, confidence_threshold=0.6, scales=[1.0, 0.75, 0.5], stride=16, nms_threshold=0.3):

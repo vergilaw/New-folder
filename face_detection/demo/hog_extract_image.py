@@ -77,21 +77,24 @@ def extract_hog_visualization(image_path, output_path=None):
         return
     
     h, w = image.shape[:2]
+    display_size = 400  # Display size for output
     
-    # Original scale HOG (full size)
-    hog_vis1 = compute_hog_fullsize(image, cell_size=8)
+    # Original scale HOG (resize to 64x64 = 8x8 cells with cell_size=8)
+    image_64 = cv2.resize(image, (64, 64))
+    hog_vis1 = compute_hog_fullsize(image_64, cell_size=8)
     hog_vis1 = (hog_vis1 * 255).astype(np.uint8)
+    hog_vis1 = cv2.resize(hog_vis1, (display_size, display_size), interpolation=cv2.INTER_NEAREST)
     
-    # 1/2x scale HOG
-    image_half = cv2.resize(image, (w // 2, h // 2))
-    hog_vis2 = compute_hog_fullsize(image_half, cell_size=8)
+    # 1/2x scale HOG (resize to 32x32 = 4x4 cells)
+    image_32 = cv2.resize(image, (32, 32))
+    hog_vis2 = compute_hog_fullsize(image_32, cell_size=8)
     hog_vis2 = (hog_vis2 * 255).astype(np.uint8)
-    hog_vis2 = cv2.resize(hog_vis2, (w, h))  # Resize back for display
+    hog_vis2 = cv2.resize(hog_vis2, (display_size, display_size), interpolation=cv2.INTER_NEAREST)
     
     # Create dark background result
     padding = 60
-    result_h = h * 2 + padding * 3
-    result_w = w + padding * 2
+    result_h = display_size * 2 + padding * 3
+    result_w = display_size + padding * 2
     result = np.zeros((result_h, result_w, 3), dtype=np.uint8)
     result[:] = (30, 30, 30)  # Dark gray background
     
@@ -100,16 +103,16 @@ def extract_hog_visualization(image_path, output_path=None):
     hog2_colored = cv2.cvtColor(hog_vis2, cv2.COLOR_GRAY2BGR)
     
     y1 = padding
-    y2 = padding * 2 + h
+    y2 = padding * 2 + display_size
     x = padding
     
-    result[y1:y1+h, x:x+w] = hog1_colored
-    result[y2:y2+h, x:x+w] = hog2_colored
+    result[y1:y1+display_size, x:x+display_size] = hog1_colored
+    result[y2:y2+display_size, x:x+display_size] = hog2_colored
     
     # Add labels
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(result, "Original Scale", (x, y1 - 20), font, 0.8, (255, 255, 255), 2)
-    cv2.putText(result, "1/2x Scale", (x, y2 - 20), font, 0.8, (255, 255, 255), 2)
+    cv2.putText(result, "64x64 (8x8 cells)", (x, y1 - 20), font, 0.8, (255, 255, 255), 2)
+    cv2.putText(result, "32x32 (4x4 cells)", (x, y2 - 20), font, 0.8, (255, 255, 255), 2)
     
     # Save output
     if output_path is None:
