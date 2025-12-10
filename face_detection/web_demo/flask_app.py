@@ -30,6 +30,7 @@ hog_svm_model = None
 raw_svm_model = None
 hog_scaler = None
 raw_scaler = None
+trained_detector = None  # FaceDetector with PCA
 
 results = {
     'hogsliding': {'boxes': [], 'time': 0},
@@ -46,9 +47,22 @@ hog_extractor = HOGExtractorScratch(window_size=(64, 64))
 
 
 def init_models():
-    global hog_svm_model, raw_svm_model, hog_scaler, raw_scaler
+    global hog_svm_model, raw_svm_model, hog_scaler, raw_scaler, trained_detector
     model_path = 'models'
     os.makedirs(model_path, exist_ok=True)
+    
+    # Load trained FaceDetector (with PCA if trained with it)
+    detector_file = os.path.join(model_path, 'face_detector.pkl')
+    if os.path.exists(detector_file):
+        trained_detector = FaceDetector()
+        trained_detector.load(detector_file)
+        if trained_detector.pca is not None:
+            print(f"Loaded FaceDetector with PCA ({trained_detector.pca_components} components)")
+        else:
+            print("Loaded FaceDetector (no PCA)")
+    else:
+        print("No trained FaceDetector found - using fallback methods")
+    
     hog_model_file = os.path.join(model_path, 'hog_svm.pkl')
     raw_model_file = os.path.join(model_path, 'raw_svm.pkl')
 
@@ -76,15 +90,29 @@ def init_models():
 
 
 def detect_with_hog_svm(frame, stride=24):
+    global trained_detector
     boxes = []
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = _region_proposal.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+    
     for (fx, fy, fw, fh) in faces:
         face_region = frame[fy:fy+fh, fx:fx+fw]
-        face_region = cv2.resize(face_region, (64, 64))
-        face_hog = hog_extractor.extract(face_region)
-        confidence = min(0.95, 0.7 + np.std(face_hog) * 0.5)
-        boxes.append({'x': int(fx), 'y': int(fy), 'w': int(fw), 'h': int(fh), 'score': float(confidence)})
+        
+        # Use trained detector if available (supports PCA)
+        if trained_detector and trained_detector.is_trained:
+            features = trained_detector.hog.extract(face_region)
+            if trained_detector.pca is not None:
+                features = trained_detector.pca.transform([features])[0]
+            prob = trained_detector.svm.predict_proba([features])[0]
+            confidence = float(prob[1])
+        else:
+            # Fallback to simple HOG energy
+            face_region = cv2.resize(face_region, (64, 64))
+            face_hog = hog_extractor.extract(face_region)
+            confidence = min(0.95, 0.7 + np.std(face_hog) * 0.5)
+        
+        if confidence >= 0.5:
+            boxes.append({'x': int(fx), 'y': int(fy), 'w': int(fw), 'h': int(fh), 'score': float(confidence)})
     return boxes
 
 
@@ -179,8 +207,8 @@ def generate_frames(method):
             frame = draw_boxes(frame, results['hogsliding']['boxes'], (0, 255, 255), 'Sliding')
             cv2.putText(frame, f"HOG+SVM Sliding ({len(results['hogsliding']['boxes'])} faces)", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
         elif method == 'hogsvm':
-            frame = draw_boxes(frame, results['hogsvm']['boxes'], (0, 255, 0), 'HOG+SVM')
-            cv2.putText(frame, f"HOG + SVM ({len(results['hogsvm']['boxes'])} faces)", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            frame = draw_boxes(frame, results['hogsvm']['boxes'], (255, 128, 0), 'HOG+SVM')  # Orange color
+            cv2.putText(frame, f"HOG + SVM ({len(results['hogsvm']['boxes'])} faces)", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 128, 0), 2)
         elif method == 'rawsvm':
             frame = draw_boxes(frame, results['rawsvm']['boxes'], (255, 0, 0), 'Raw+SVM')
             cv2.putText(frame, f"Raw+SVM ({len(results['rawsvm']['boxes'])} faces)", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)

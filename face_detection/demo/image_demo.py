@@ -74,6 +74,9 @@ def process_image_3panel(image_path, model_path=None, output_path=None, show=Tru
             if face_region.size == 0:
                 continue
             features = detector.hog.extract(face_region)
+            # Apply PCA if detector has it
+            if detector.pca is not None:
+                features = detector.pca.transform([features])[0]
             prob = detector.svm.predict_proba([features])[0]
             confidence = prob[1]
             if confidence >= 0.7:

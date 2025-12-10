@@ -1,16 +1,19 @@
 import cv2
 import numpy as np
 import joblib
+from sklearn.decomposition import PCA
 from .hog_extractor import HOGExtractor
 from .svm_classifier import SVMClassifier
 
 
 class FaceDetector:
-    def __init__(self, window_size=(64, 64), cell_size=8):
+    def __init__(self, window_size=(64, 64), cell_size=8, pca_components=None):
         self.hog = HOGExtractor(window_size=window_size, cell_size=cell_size)
         self.svm = SVMClassifier(kernel='rbf', C=1.0)
         self.window_size = window_size
         self.is_trained = False
+        self.pca_components = pca_components
+        self.pca = None
 
     def train(self, positive_samples, negative_samples, test_size=0.2):
         from sklearn.model_selection import train_test_split
@@ -23,6 +26,14 @@ class FaceDetector:
             y.append(0)
         X = np.array(X)
         y = np.array(y)
+        
+        # Apply PCA if specified
+        if self.pca_components:
+            print(f"Applying PCA: {X.shape[1]} -> {self.pca_components} dimensions")
+            self.pca = PCA(n_components=self.pca_components)
+            X = self.pca.fit_transform(X)
+            print(f"Explained variance ratio: {sum(self.pca.explained_variance_ratio_)*100:.2f}%")
+        
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42, stratify=y)
         self.svm.fit(X_train, y_train)
         accuracy, report = self.svm.evaluate(X_test, y_test)
@@ -45,6 +56,8 @@ class FaceDetector:
                 for x in range(0, new_w - win_w + 1, stride):
                     window = resized[y:y+win_h, x:x+win_w]
                     features = self.hog.extract(window)
+                    if self.pca is not None:
+                        features = self.pca.transform([features])[0]
                     prob = self.svm.predict_proba([features])[0]
                     confidence = prob[1]
                     if confidence >= confidence_threshold:
@@ -72,7 +85,13 @@ class FaceDetector:
         return intersection / union if union > 0 else 0
 
     def save(self, path):
-        data = {'hog_config': self.hog.get_info(), 'svm': {'scaler': self.svm.scaler, 'model': self.svm.svm}, 'is_trained': self.is_trained}
+        data = {
+            'hog_config': self.hog.get_info(), 
+            'svm': {'scaler': self.svm.scaler, 'model': self.svm.svm}, 
+            'is_trained': self.is_trained,
+            'pca': self.pca,
+            'pca_components': self.pca_components
+        }
         joblib.dump(data, path)
 
     def load(self, path):
@@ -84,6 +103,8 @@ class FaceDetector:
         self.svm.svm = data['svm']['model']
         self.svm.is_trained = True
         self.is_trained = data['is_trained']
+        self.pca = data.get('pca')
+        self.pca_components = data.get('pca_components')
 
 
 def draw_detections(image, boxes, color=(0, 255, 0), thickness=2):

@@ -120,7 +120,8 @@ def main():
     positive = positive[:n_samples]
     negative = negative[:n_samples]
 
-    detector = FaceDetector(window_size=(64, 64), cell_size=8)
+    # Set pca_components=None để không dùng PCA
+    detector = FaceDetector(window_size=(64, 64), cell_size=8, pca_components=500)
     accuracy = detector.train(positive, negative, test_size=0.2)
 
     model_path = 'models/face_detector.pkl'
