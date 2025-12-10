@@ -38,9 +38,13 @@ def process_image_3panel(image_path, model_path=None, output_path=None, show=Tru
     h_r, w_r = img_resized.shape[:2]
 
     t0 = time.time()
-    faces_sliding = []
+    faces_sliding_raw = []
+    faces_sliding_nms = []
     if detector and detector.is_trained:
-        faces_sliding = detector.detect(image, confidence_threshold=0.95, scales=[1.0, 0.75], stride=32, nms_threshold=0.15)
+        # Sliding window không NMS (để thấy sự khác biệt)
+        faces_sliding_raw = detector.detect(image, confidence_threshold=0.95, scales=[1.0, 0.75], stride=32, nms_threshold=1.0)
+        # Sliding window có NMS
+        faces_sliding_nms = detector.detect(image, confidence_threshold=0.95, scales=[1.0, 0.75], stride=32, nms_threshold=0.15)
     time_sliding = time.time() - t0
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -83,9 +87,10 @@ def process_image_3panel(image_path, model_path=None, output_path=None, show=Tru
                 faces_hog.append({'x': x, 'y': y, 'w': fw, 'h': fh, 'confidence': float(confidence)})
     time_hog = time.time() - t2
 
+    # Panel 1: Sliding với NMS
     panel1 = img_resized.copy()
     hog_extractor = HOGExtractor(window_size=(64, 64))
-    for i, box in enumerate(faces_sliding):
+    for i, box in enumerate(faces_sliding_nms):
         xs, ys = int(box['x'] * scale), int(box['y'] * scale)
         fws, fhs = int(box['w'] * scale), int(box['h'] * scale)
         cv2.rectangle(panel1, (xs, ys), (xs + fws, ys + fhs), (0, 255, 255), 2)
@@ -100,7 +105,7 @@ def process_image_3panel(image_path, model_path=None, output_path=None, show=Tru
                     hog_vis = cv2.resize(hog_vis, (hog_size, hog_size))
                     hog_vis = cv2.cvtColor(hog_vis, cv2.COLOR_GRAY2BGR)
                     panel1[ys+2:ys+2+hog_size, xs+2:xs+2+hog_size] = hog_vis
-    cv2.putText(panel1, f"Sliding HOG+SVM ({len(faces_sliding)})", (10, h_r-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+    cv2.putText(panel1, f"Sliding HOG+SVM+NMS ({len(faces_sliding_nms)})", (10, h_r-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
     panel2 = img_resized.copy()
     for box in faces_hog:
@@ -120,7 +125,7 @@ def process_image_3panel(image_path, model_path=None, output_path=None, show=Tru
 
     result = np.hstack([panel1, panel2, panel3])
     title = np.zeros((40, result.shape[1], 3), dtype=np.uint8)
-    cv2.putText(title, "HOG+SVM (Sliding) | HOG+SVM (Optimized) | Raw Pixels+SVM", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(title, "HOG+SVM+NMS (Sliding) | HOG+SVM (Optimized) | Raw Pixels+SVM", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
     result = np.vstack([title, result])
 
     if output_path is None:
